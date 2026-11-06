@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>말뚝 강아지</title>
+<style>
+:root{--bg:#fdf3e1;--fg:#4a3426;--card:#fffaf0;--acc:#e0803a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2a211b;--fg:#f6e7d3;--card:#3b2f27}}
+:root[data-theme="dark"]{--bg:#2a211b;--fg:#f6e7d3;--card:#3b2f27}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;display:flex;justify-content:center}
+#w{width:100%;max-width:800px;padding:8px;box-sizing:border-box;position:relative}
+#hud{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;margin-bottom:6px}
+#hud b{font-size:16px}
+#bar{flex:1;min-width:90px;height:12px;background:#0002;border-radius:8px;overflow:hidden}
+#bar i{display:block;height:100%;width:100%;background:#ef6b8a;transition:width .2s}
+button{font:inherit;background:var(--acc);color:#fff;border:0;border-radius:10px;padding:8px 14px;cursor:pointer;font-weight:700}
+#cw{position:relative}
+canvas{width:100%;height:auto;display:block;border-radius:12px;touch-action:none;background:#bfd9f2}
+#msg{margin-top:8px;min-height:44px;background:var(--card);border-radius:12px;padding:10px 12px;font-size:15px;line-height:1.4}
+#ov,#pn{position:absolute;inset:0;background:#000a;border-radius:12px;display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;text-align:center;padding:16px}
+#pn p{max-width:480px;line-height:1.6;margin:6px 0 14px;white-space:pre-line}
+#pn h1{margin:0;font-size:26px}
+#tb{width:70%;height:10px;background:#fff3;border-radius:6px;overflow:hidden;margin:8px 0}
+#tb i{display:block;height:100%;background:#ffd166;width:100%}
+#ar{position:relative;width:92%;flex:1;max-height:340px}
+.k{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:#e0803a;border:3px solid #fff;color:#fff;font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none}
+.k.d{background:#7bc47f;opacity:.7}
+.sh{animation:sh .25s}
+@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+</style></head><body>
+<div id="w">
+<div id="hud"><span id="st">1단계</span><span>⏱ <b id="tm">60</b></span><span>🦴 목줄 <b id="ll">110</b>/<span id="nd">190</span></span><span>♥</span><div id="bar"><i id="hb"></i></div><button id="bt">🧶 목줄 늘리기</button></div>
+<div id="cw"><canvas id="c" width="800" height="560"></canvas>
+<div id="ov"><div>🧶 매듭을 1번부터 순서대로 눌러 새 목줄을 이어 묶자!</div><div id="tb"><i></i></div><div id="ar"></div></div>
+<div id="pn"></div></div>
+<div id="msg"></div>
+</div>
+<script>
+const cv=document.getElementById('c'),g=cv.getContext('2d'),$=id=>document.getElementById(id);
+const W=800,H=560,CS=40,SX=260,SY=280,CLIFF=80;
+const ST=[{k:'bowl',d:190,a:-.3,t:60},{k:'house',d:270,a:.35,t:70},{k:'bowl',d:340,a:-.15,t:80},{k:'house',d:420,a:.1,t:90}];
+let s=0,ph='start',L=110,L0=110,happy=100,h0=100,tm=60,dog={x:SX+60,y:SY},poops=[],pt=0,keys={},ptr=null,mini=null,eatT=0,msgT=0,rounds=0,clock=0,hold=0;
+const tg=i=>({x:SX+ST[i].d*Math.cos(ST[i].a),y:SY+ST[i].d*Math.sin(ST[i].a)});
+function say(t,sec=4){$('msg').textContent=t;msgT=sec}
+function panel(h,p,b,fn){const e=$('pn');e.style.display='flex';e.innerHTML='<h1>'+h+'</h1><p>'+p+'</p><button id="pb">'+b+'</button>';$('pb').onclick=()=>{e.style.display='none';fn()}}
+function begin(i,retry){
+  s=i;if(retry){L=L0;happy=h0;dog={x:SX+50,y:SY}}else{L0=L;h0=happy}
+  tm=ST[i].t;poops=[];pt=0;ph='play';
+  say(ST[i].k==='bowl'?'배고파… 저기 밥그릇이 보이는데 줄이 모자라. 목줄을 늘려줘!':'너무 졸려… 집이 저기 있는데 닿질 않아. 제발 더 긴 줄을…',6)}
+function start(){L=110;happy=100;dog={x:SX+50,y:SY};begin(0,false)}
+function end(win,why){
+  ph='end';$('ov').style.display='none';mini=null;
+  if(win)panel('🏠 zZZ…','강아지는 배불리 먹고, 따뜻한 집에서 꼬리를 말고 잠들었어요.\n처음으로 줄이 닿지 않는 곳까지 온 날이었죠.\n\n당신이 늘려준 줄 덕분이에요.','다시 하기',start);
+  else panel(why==='time'?'⏰ 시간이 다 됐어요':'💔 기운이 다 빠졌어요',why==='time'?'강아지는 밥그릇을 바라보다 눈을 감았어요.\n조금만, 조금만 더 길었다면…':'똥 위에서 웅크린 채 강아지는 더 이상 꼬리를 흔들지 못했어요.\n깨끗한 곳에서 쉴 수 있게 해줬다면…','이 단계 다시 도전',()=>begin(s,true))}
+function openMini(){
+  if(ph!=='play')return;
+  const n=4+Math.min(3,rounds),ar=$('ar');ar.innerHTML='';const ps=[];
+  for(let i=1;i<=n;i++){let x,y,t=0;do{x=10+Math.random()*80;y=12+Math.random()*76;t++}while(t<40&&ps.some(p=>Math.hypot(p[0]-x,(p[1]-y)*.8)<16));ps.push([x,y]);
+    const e=document.createElement('div');e.className='k';e.textContent=i;e.style.left=x+'%';e.style.top=y+'%';e.onpointerdown=ev=>{ev.preventDefault();hit(i,e)};ar.appendChild(e)}
+  mini={n,next:1,t:6+n*.8,max:6+n*.8};ph='mini';$('ov').style.display='flex'}
+function hit(i,e){
+  if(!mini)return;
+  if(i===mini.next){e.classList.add('d');mini.next++;
+    if(mini.next>mini.n){rounds++;L+=60;closeMini();say('🧶 새 목줄이다! 강아지가 줄을 갈아 끼고 껑충 뛰었어. 더 멀리 갈 수 있어!',5)}}
+  else{mini.t-=1.5;mini.next=1;document.querySelectorAll('.k').forEach(k=>{k.classList.remove('d');k.classList.add('sh');setTimeout(()=>k.classList.remove('sh'),260)})}}
+function closeMini(){mini=null;ph='play';$('ov').style.display='none'}
+function cellOf(p){return Math.floor(p.x/CS)+','+Math.floor(p.y/CS)}
+function step(dt){
+  if(ph==='eat'){eatT-=dt;if(eatT<=0){const nx=s+1;happy=Math.min(100,happy+25);if(nx>=ST.length)end(true);else{L0=L;h0=happy;begin(nx,false)}}return}
+  if(ph!=='play'&&ph!=='mini')return;
+  tm-=dt;happy-=.6*dt;pt+=dt;msgT-=dt;
+  if(mini){mini.t-=dt;if(mini.t<=0){closeMini();happy-=6;say('매듭이 엉켜버렸어… 다시 해보자!',4)}}
+  if(ph==='play'){
+    let vx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),vy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);
+    if(!vx&&!vy&&ptr){const dx=ptr.x-dog.x,dy=ptr.y-dog.y,d=Math.hypot(dx,dy);if(d>6){vx=dx/d;vy=dy/d}}
+    const m=Math.hypot(vx,vy);if(m){dog.x+=vx/m*170*dt;dog.y+=vy/m*170*dt}
+    let dx=dog.x-SX,dy=dog.y-SY,d=Math.hypot(dx,dy);
+    if(d>L){dog.x=SX+dx/d*L;dog.y=SY+dy/d*L;if(m&&msgT<=0)say('줄이 팽팽해… 더 못 가겠어. 낑…',3)}
+    if(dog.x<CLIFF+14){dog.x=CLIFF+14;if(m&&msgT<=0)say('앗, 낭떠러지! 무서워서 멈췄어 ㅠㅠ',3)}
+    dog.y=Math.max(22,Math.min(H-22,dog.y));
+    const t=tg(s);
+    if(Math.hypot(dog.x-t.x,dog.y-t.y)<26){ph='eat';eatT=2.2;say(ST[s].k==='bowl'?'냠냠냠! 며칠 만의 밥이야… 눈물 나게 맛있어 🥣':'폭신해… 집이다… 드디어 쉴 수 있어 🏠',3)}
+  }
+  if(pt>=11){pt=0;poops.push({x:Math.floor(dog.x/CS)*CS+CS/2,y:Math.floor(dog.y/CS)*CS+CS/2});say('…끙. 줄이 짧아서 멀리 갈 수도 없어서 여기에 쌌어. 미안해 💩',4)}
+  const c=cellOf(dog);
+  if(poops.some(p=>cellOf(p)===c)&&ph==='play'){happy-=7*dt;if(msgT<=0)say('으엑… 똥 밟았어. 기분이 가라앉아…',3)}
+  if(msgT<=0&&ph==='play'){
+    if(tm<15)say(ST[s].k==='bowl'?'배가 너무 고파… 시간이 없어…':'눈이 감겨… 제발 서둘러줘…',4);
+    else if(happy<40)say('기운이 없어… 누가 쓰다듬어 줬으면 좋겠다…',5);
+    else say('말뚝을 뱅글뱅글… 목줄 늘리기 버튼을 눌러줘! (이동: 방향키/화면 터치)',6)}
+  if(tm<=0){tm=0;end(false,'time')}else if(happy<=0){happy=0;end(false,'sad')}
+}
+function dogDraw(x,y,sad){
+  const w=Math.sin(clock*(sad?3:10))*(sad?2:6);
+  g.strokeStyle='#b5793e';g.lineWidth=5;g.lineCap='round';g.beginPath();g.moveTo(x+(x>SX?14:-14),y+8);g.lineTo(x+(x>SX?26:-26),y-4+w);g.stroke();
+  g.fillStyle='#8a5a2b';g.beginPath();g.ellipse(x-15,y-8+(sad?6:0),7,12,-.4,0,7);g.ellipse(x+15,y-8+(sad?6:0),7,12,.4,0,7);g.fill();
+  g.fillStyle='#e8b27a';g.beginPath();g.arc(x,y,18,0,7);g.fill();
+  g.fillStyle='#f7dcb8';g.beginPath();g.ellipse(x,y+7,9,7,0,0,7);g.fill();
+  g.fillStyle='#3a2418';g.beginPath();g.arc(x,y+3,3.5,0,7);g.fill();
+  g.strokeStyle='#3a2418';g.lineWidth=2;
+  if(sad){g.beginPath();g.moveTo(x-11,y-6);g.lineTo(x-5,y-3);g.moveTo(x+11,y-6);g.lineTo(x+5,y-3);g.stroke();
+    g.beginPath();g.arc(x,y+14,4,3.5,5.9);g.stroke();g.fillStyle='#6cb8ff';g.beginPath();g.ellipse(x-8,y+3+(clock*20%10),2,3,0,0,7);g.fill()}
+  else{g.fillStyle='#3a2418';g.beginPath();g.arc(x-7,y-3,3,0,7);g.arc(x+7,y-3,3,0,7);g.fill();g.beginPath();g.arc(x,y+9,4,.2,2.9);g.stroke()}
+  g.fillStyle='#e0433a';g.fillRect(x-12,y+14,24,4)}
+function draw(){
+  g.clearRect(0,0,W,H);
+  g.fillStyle='#bfd9f2';g.fillRect(0,0,CLIFF,H);
+  g.strokeStyle='#9fc2e6';g.lineWidth=1;g.beginPath();
+  for(let x=0;x<=CLIFF;x+=CS){g.moveTo(x,0);g.lineTo(x,H)}for(let y=0;y<=H;y+=CS){g.moveTo(0,y);g.lineTo(CLIFF,y)}g.stroke();
+  g.font='22px sans-serif';g.fillText('☁️',10+Math.sin(clock/2)*8,90);g.fillText('☁️',18,380);
+  g.fillStyle='#fff8';g.font='12px sans-serif';g.fillText('허공',24,H/2);
+  for(let cx=2;cx<W/CS;cx++)for(let cy=0;cy<H/CS;cy++){
+    const x=cx*CS+CS/2,y=cy*CS+CS/2,on=Math.hypot(x-SX,y-SY)<=L;
+    g.fillStyle=on?((cx+cy)%2?'#bfe38f':'#cdeaa0'):((cx+cy)%2?'#7d6c5a':'#85735f');g.fillRect(cx*CS,cy*CS,CS,CS)}
+  g.strokeStyle='#0002';g.lineWidth=1;g.beginPath();
+  for(let x=CLIFF;x<=W;x+=CS){g.moveTo(x,0);g.lineTo(x,H)}for(let y=0;y<=H;y+=CS){g.moveTo(CLIFF,y);g.lineTo(W,y)}g.stroke();
+  g.fillStyle='#4a3426';g.fillRect(CLIFF-5,0,7,H);g.fillStyle='#0003';g.fillRect(CLIFF+2,0,8,H);
+  g.setLineDash([6,6]);g.strokeStyle='#3b7d2a';g.lineWidth=2;g.beginPath();g.arc(SX,SY,L,0,7);g.stroke();g.setLineDash([]);
+  poops.forEach(p=>{g.font='22px sans-serif';g.fillText('💩',p.x-11,p.y+8)});
+  const t=tg(s);g.font='34px sans-serif';g.fillText(ST[s].k==='bowl'?'🥣':'🏠',t.x-17,t.y+12);
+  const dx=dog.x-SX,dy=dog.y-SY,d=Math.hypot(dx,dy),sag=Math.min(24,(L-d)*.2);
+  g.strokeStyle='#d33';g.lineWidth=3;g.beginPath();g.moveTo(SX,SY);g.quadraticCurveTo((SX+dog.x)/2,(SY+dog.y)/2+sag,dog.x,dog.y);g.stroke();
+  g.fillStyle='#6b4423';g.fillRect(SX-6,SY-14,12,26);g.fillStyle='#8b5e34';g.fillRect(SX-6,SY-14,12,6);
+  dogDraw(dog.x,dog.y,happy<40);
+  if(ph==='eat'){g.font='24px sans-serif';for(let i=0;i<3;i++)g.fillText('💗',dog.x-20+i*18,dog.y-30-((clock*30+i*9)%20))}
+}
+function hud(){
+  $('st').textContent=(s+1)+'/4 '+(ST[s].k==='bowl'?'🥣 밥':'🏠 잠자리');
+  const e=$('tm');e.textContent=Math.ceil(tm);e.style.color=tm<15?'#e33':'';
+  $('ll').textContent=Math.round(L);$('nd').textContent=ST[s].d-20;
+  $('hb').style.width=Math.max(0,happy)+'%';
+  $('bt').style.opacity=ph==='play'?1:.5;
+  if(mini)document.querySelector('#tb i').style.width=Math.max(0,mini.t/mini.max*100)+'%'}
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;clock+=dt;step(dt);draw();hud();requestAnimationFrame(loop)}
+function pos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+cv.onpointerdown=e=>{ptr=pos(e)};cv.onpointermove=e=>{if(ptr)ptr=pos(e)};
+addEventListener('pointerup',()=>ptr=null);
+addEventListener('keydown',e=>{keys[e.key]=1;if(e.key.startsWith('Arrow'))e.preventDefault();if(e.key===' ')openMini()});
+addEventListener('keyup',e=>keys[e.key]=0);
+$('bt').onclick=openMini;
+panel('🐶 말뚝 강아지','강아지는 말뚝에 매여 하루 종일 같은 자리를 맴돌았어요.\n저기 밥그릇과 집이 보이는데… 줄이 조금 모자라요.\n\n방향키(또는 화면 터치)로 강아지를 움직이고,\n🧶 목줄 늘리기로 새 줄을 이어 주세요.\n시간 안에 밥을 먹이고, 집에서 재워 주세요.','시작하기',start);
+requestAnimationFrame(loop);
+</script></body></html>
