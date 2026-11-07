@@ -37,43 +37,57 @@ canvas{width:100%;height:auto;display:block;border-radius:12px;touch-action:none
 </div>
 <script>
 const cv=document.getElementById('c'),g=cv.getContext('2d'),$=id=>document.getElementById(id);
-const W=800,H=560,CS=40,SX=260,SY=280,CLIFF=80;
-const ST=[{k:'bowl',d:190,a:-.3,t:60},{k:'house',d:270,a:.35,t:70},{k:'bowl',d:340,a:-.15,t:80},{k:'house',d:420,a:.1,t:90}];
+const W=800,H=560,CS=40,SX=260,SY=280,CLIFF=80,RX0=560,RX1=640;
+const ST0=[{k:'bowl',d:170,a:.5,t:55},{k:'house',d:230,a:-.6,t:60},{k:'bowl',d:270,a:.9,t:65},{k:'house',d:300,a:-.9,t:70},{k:'bowl',d:290,a:.15,t:70},{k:'house',d:330,a:-.5,t:80}];
+const ZC=[{x:355,y:225,r:50,e:'🐈',n:'고양이'},{x:330,y:420,r:48,e:'🛁',n:'목욕물'},{x:500,y:210,r:45,e:'🧹',n:'청소기'},{x:200,y:120,r:44,e:'🚿',n:'샤워기'},{x:170,y:430,r:42,e:'🐕',n:'큰 개'},{x:440,y:335,r:40,e:'🎆',n:'폭죽'},{x:250,y:170,r:40,e:'🚗',n:'자동차'},{x:240,y:395,r:38,e:'🐍',n:'뱀'}];
+let items=[],swim=0,sr=0,Z=[];const ST=[];
 let s=0,ph='start',L=110,L0=110,happy=100,h0=100,tm=60,dog={x:SX+60,y:SY},poops=[],pt=0,keys={},ptr=null,mini=null,eatT=0,msgT=0,rounds=0,clock=0,hold=0;
 const tg=i=>({x:SX+ST[i].d*Math.cos(ST[i].a),y:SY+ST[i].d*Math.sin(ST[i].a)});
 function say(t,sec=4){$('msg').textContent=t;msgT=sec}
 function panel(h,p,b,fn){const e=$('pn');e.style.display='flex';e.innerHTML='<h1>'+h+'</h1><p>'+p+'</p><button id="pb">'+b+'</button>';$('pb').onclick=()=>{e.style.display='none';fn()}}
 function begin(i,retry){
-  s=i;if(retry){L=L0;happy=h0;dog={x:SX+50,y:SY}}else{L0=L;h0=happy}
-  tm=ST[i].t;poops=[];pt=0;ph='play';
-  say(ST[i].k==='bowl'?'배고파… 저기 밥그릇이 보이는데 줄이 모자라. 목줄을 늘려줘!':'너무 졸려… 집이 저기 있는데 닿질 않아. 제발 더 긴 줄을…',6)}
+  s=i;if(retry){L=L0;happy=h0;dog={x:SX+50,y:SY}}else{if(i>0)L=110;L0=L;h0=happy}
+  stage(i);tm=ST[i].t;poops=[];pt=0;ph='play';sr=0;setZ();spawn();
+  say((i>0&&!retry?'줄이 다시 짧아졌어… ':'')+(ST[i].k==='bowl'?'배고파… 저기 밥그릇이 보이는데 줄이 모자라. 목줄을 늘려줘!':'너무 졸려… 집이 저기 있는데 닿질 않아. 제발 더 긴 줄을…'),6)}
 function start(){L=110;happy=100;dog={x:SX+50,y:SY};begin(0,false)}
 function end(win,why){
   ph='end';$('ov').style.display='none';mini=null;
   if(win)panel('🏠 zZZ…','강아지는 배불리 먹고, 따뜻한 집에서 꼬리를 말고 잠들었어요.\n처음으로 줄이 닿지 않는 곳까지 온 날이었죠.\n\n당신이 늘려준 줄 덕분이에요.','다시 하기',start);
   else panel(why==='time'?'⏰ 시간이 다 됐어요':'💔 기운이 다 빠졌어요',why==='time'?'강아지는 밥그릇을 바라보다 눈을 감았어요.\n조금만, 조금만 더 길었다면…':'똥 위에서 웅크린 채 강아지는 더 이상 꼬리를 흔들지 못했어요.\n깨끗한 곳에서 쉴 수 있게 해줬다면…','이 단계 다시 도전',()=>begin(s,true))}
 function openMini(){
-  if(ph!=='play')return;
-  const n=4+Math.min(3,rounds),ar=$('ar');ar.innerHTML='';const ps=[];
+  if(ph!=='play'||swim)return;
+  const n=3+Math.min(6,Math.floor(s/2)+sr),ar=$('ar');ar.innerHTML='';const ps=[];
   for(let i=1;i<=n;i++){let x,y,t=0;do{x=10+Math.random()*80;y=12+Math.random()*76;t++}while(t<40&&ps.some(p=>Math.hypot(p[0]-x,(p[1]-y)*.8)<16));ps.push([x,y]);
     const e=document.createElement('div');e.className='k';e.textContent=i;e.style.left=x+'%';e.style.top=y+'%';e.onpointerdown=ev=>{ev.preventDefault();hit(i,e)};ar.appendChild(e)}
-  mini={n,next:1,t:6+n*.8,max:6+n*.8};ph='mini';$('ov').style.display='flex'}
+  mini={n,next:1,t:3+n*Math.max(.55,1.1-s*.04),max:0};mini.max=mini.t;ph='mini';$('ov').style.display='flex'}
 function hit(i,e){
   if(!mini)return;
   if(i===mini.next){e.classList.add('d');mini.next++;
-    if(mini.next>mini.n){rounds++;L+=60;closeMini();say('🧶 새 목줄이다! 강아지가 줄을 갈아 끼고 껑충 뛰었어. 더 멀리 갈 수 있어!',5)}}
+    if(mini.next>mini.n){sr++;L+=45;closeMini();say('🧶 새 목줄이다! 강아지가 줄을 갈아 끼고 껑충 뛰었어. 더 멀리 갈 수 있어!',5)}}
   else{mini.t-=1.5;mini.next=1;document.querySelectorAll('.k').forEach(k=>{k.classList.remove('d');k.classList.add('sh');setTimeout(()=>k.classList.remove('sh'),260)})}}
 function closeMini(){mini=null;ph='play';$('ov').style.display='none'}
 function cellOf(p){return Math.floor(p.x/CS)+','+Math.floor(p.y/CS)}
+function gen(i){const d=Math.min(330,150+i*15)+(i>12?Math.round(Math.random()*20-10):0);let a,x,y,n=0;
+  do{a=Math.random()*2.4-1.2;x=SX+d*Math.cos(a);y=SY+d*Math.sin(a);n++}while(n<100&&(x>548||y<40||y>520));
+  if(x>548||y<40||y>520)a=i%2?.7:-.7;
+  return{k:i%2?'house':'bowl',d,a,t:Math.round(Math.max(32,62-i*2.2))}}
+function stage(i){while(ST.length<=i)ST.push(gen(ST.length));return ST[i]}
+function setZ(){const t=tg(s),k=Math.min(ZC.length,Math.floor(s*.7));Z=ZC.filter(z=>Math.hypot(z.x-t.x,z.y-t.y)>z.r+45&&Math.hypot(z.x-(SX+50),z.y-SY)>z.r+25).slice(0,k)}
+function spawn(){items=[];const t=tg(s);let n=0;
+  while(items.length<3&&n++<300){const a=Math.random()*6.28,r=60+Math.random()*(ST[s].d-30),x=SX+r*Math.cos(a),y=SY+r*Math.sin(a);
+    if(x<CLIFF+30||x>RX0-10||y<30||y>H-30||Z.some(z=>Math.hypot(x-z.x,y-z.y)<z.r+16)||Math.hypot(x-t.x,y-t.y)<50||items.some(i=>Math.hypot(x-i.x,y-i.y)<60))continue;
+    items.push({x,y,e:Math.random()<.5?'🦴':'🎾'})}}
 function step(dt){
-  if(ph==='eat'){eatT-=dt;if(eatT<=0){const nx=s+1;happy=Math.min(100,happy+25);if(nx>=ST.length)end(true);else{L0=L;h0=happy;begin(nx,false)}}return}
+  if(ph==='eat'){eatT-=dt;if(eatT<=0){const nx=s+1;happy=Math.min(100,happy+25);begin(nx,false)}return}
   if(ph!=='play'&&ph!=='mini')return;
-  tm-=dt;happy-=.6*dt;pt+=dt;msgT-=dt;
+  tm-=dt;happy-=(.45+Math.min(.65,s*.04))*dt;pt+=dt;msgT-=dt;
   if(mini){mini.t-=dt;if(mini.t<=0){closeMini();happy-=6;say('매듭이 엉켜버렸어… 다시 해보자!',4)}}
   if(ph==='play'){
     let vx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),vy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);
     if(!vx&&!vy&&ptr){const dx=ptr.x-dog.x,dy=ptr.y-dog.y,d=Math.hypot(dx,dy);if(d>6){vx=dx/d;vy=dy/d}}
-    const m=Math.hypot(vx,vy);if(m){dog.x+=vx/m*170*dt;dog.y+=vy/m*170*dt}
+    let m=Math.hypot(vx,vy);
+    if(dog.x>=RX0&&dog.x<RX1){m=0;dog.x+=(-12+Math.sin(clock*2)*6)*dt;dog.y+=40*dt;happy-=5*dt;if(!swim){swim=1;say('으아악 물에 빠졌어! 헤엄칠 수가 없어… 떠내려가고 있어 ㅠㅠ',5)}}
+    else{if(swim){swim=0;say('콜록콜록… 겨우 땅에 닿았어. 온몸이 젖었어…',4)}if(m){dog.x+=vx/m*170*dt;dog.y+=vy/m*170*dt}}
     let dx=dog.x-SX,dy=dog.y-SY,d=Math.hypot(dx,dy);
     if(d>L){dog.x=SX+dx/d*L;dog.y=SY+dy/d*L;if(m&&msgT<=0)say('줄이 팽팽해… 더 못 가겠어. 낑…',3)}
     if(dog.x<CLIFF+14){dog.x=CLIFF+14;if(m&&msgT<=0)say('앗, 낭떠러지! 무서워서 멈췄어 ㅠㅠ',3)}
@@ -81,9 +95,14 @@ function step(dt){
     const t=tg(s);
     if(Math.hypot(dog.x-t.x,dog.y-t.y)<26){ph='eat';eatT=2.2;say(ST[s].k==='bowl'?'냠냠냠! 며칠 만의 밥이야… 눈물 나게 맛있어 🥣':'폭신해… 집이다… 드디어 쉴 수 있어 🏠',3)}
   }
-  if(pt>=11){pt=0;poops.push({x:Math.floor(dog.x/CS)*CS+CS/2,y:Math.floor(dog.y/CS)*CS+CS/2});say('…끙. 줄이 짧아서 멀리 갈 수도 없어서 여기에 쌌어. 미안해 💩',4)}
+  if(pt>=Math.max(6,12-s*.4)){pt=0;poops.push({x:Math.floor(dog.x/CS)*CS+CS/2,y:Math.floor(dog.y/CS)*CS+CS/2});say('…끙. 줄이 짧아서 멀리 갈 수도 없어서 여기에 쌌어. 미안해 💩',4)}
   const c=cellOf(dog);
-  if(poops.some(p=>cellOf(p)===c)&&ph==='play'){happy-=7*dt;if(msgT<=0)say('으엑… 똥 밟았어. 기분이 가라앉아…',3)}
+  if(ph==='play'){
+    if(poops.some(p=>cellOf(p)===c)){happy-=9*dt;if(msgT<=0)say('으엑… 똥 밟았어. 기분이 가라앉아…',3)}
+    const z=Z.find(z=>Math.hypot(dog.x-z.x,dog.y-z.y)<=z.r);
+    if(z){happy-=8*dt;if(msgT<=0)say(z.e+' '+z.n+'이(가) 있는 곳이야! 너무 싫어… 빨리 벗어나고 싶어 ㅠㅠ',3)}
+    items=items.filter(it=>{if(Math.hypot(dog.x-it.x,dog.y-it.y)<24){happy=Math.min(100,happy+15);say(it.e==='🦴'?'🦴 뼈다귀다! 신나!':'🎾 공이다! 꼬리가 멈추질 않아!',3);return false}return true});
+  }
   if(msgT<=0&&ph==='play'){
     if(tm<15)say(ST[s].k==='bowl'?'배가 너무 고파… 시간이 없어…':'눈이 감겨… 제발 서둘러줘…',4);
     else if(happy<40)say('기운이 없어… 누가 쓰다듬어 줬으면 좋겠다…',5);
@@ -108,13 +127,22 @@ function draw(){
   g.strokeStyle='#9fc2e6';g.lineWidth=1;g.beginPath();
   for(let x=0;x<=CLIFF;x+=CS){g.moveTo(x,0);g.lineTo(x,H)}for(let y=0;y<=H;y+=CS){g.moveTo(0,y);g.lineTo(CLIFF,y)}g.stroke();
   g.font='22px sans-serif';g.fillText('☁️',10+Math.sin(clock/2)*8,90);g.fillText('☁️',18,380);
-  g.fillStyle='#fff8';g.font='12px sans-serif';g.fillText('허공',24,H/2);
+  g.fillStyle='#fff8';g.font='12px sans-serif';g.fillText('허공',24,H/2);g.fillText('(낭떠러지 아래)',4,H/2+16);
   for(let cx=2;cx<W/CS;cx++)for(let cy=0;cy<H/CS;cy++){
     const x=cx*CS+CS/2,y=cy*CS+CS/2,on=Math.hypot(x-SX,y-SY)<=L;
-    g.fillStyle=on?((cx+cy)%2?'#bfe38f':'#cdeaa0'):((cx+cy)%2?'#7d6c5a':'#85735f');g.fillRect(cx*CS,cy*CS,CS,CS)}
+    const o=(cx+cy)%2,zn=Z.some(z=>Math.hypot(x-z.x,y-z.y)<=z.r),wt=x>=RX0&&x<RX1;
+    g.fillStyle=wt?(on?(o?'#7cc4f0':'#8dd0f8'):(o?'#3b6f98':'#42789f')):zn?(on?(o?'#c9a0e0':'#d3adea'):(o?'#5d4570':'#654c78')):on?(o?'#bfe38f':'#cdeaa0'):(o?'#7d6c5a':'#85735f');g.fillRect(cx*CS,cy*CS,CS,CS)}
   g.strokeStyle='#0002';g.lineWidth=1;g.beginPath();
   for(let x=CLIFF;x<=W;x+=CS){g.moveTo(x,0);g.lineTo(x,H)}for(let y=0;y<=H;y+=CS){g.moveTo(CLIFF,y);g.lineTo(W,y)}g.stroke();
-  g.fillStyle='#4a3426';g.fillRect(CLIFF-5,0,7,H);g.fillStyle='#0003';g.fillRect(CLIFF+2,0,8,H);
+  g.fillStyle='#4a3426';g.fillRect(CLIFF-6,0,10,H);
+  for(let y=0;y<H;y+=20){g.fillStyle=(y/20)%2?'#fff':'#e33';g.fillRect(CLIFF-6,y,6,20)}
+  g.fillStyle='#0003';g.fillRect(CLIFF+4,0,10,H);
+  g.save();g.translate(CLIFF+20,H/2);g.rotate(-Math.PI/2);g.textAlign='center';g.font='bold 15px sans-serif';g.lineWidth=4;g.strokeStyle='#fff';g.strokeText('⚠️ 절벽 · 추락 위험 ⚠️',0,0);g.fillStyle='#c22';g.fillText('⚠️ 절벽 · 추락 위험 ⚠️',0,0);g.restore();
+  g.strokeStyle='#fff8';g.lineWidth=2;for(let i=0;i<8;i++){const y=(clock*30+i*70)%H;g.beginPath();g.moveTo(RX0+10,y);g.quadraticCurveTo(RX0+30,y-6,RX0+50,y);g.quadraticCurveTo(RX0+65,y+6,RX1-8,y);g.stroke()}
+  g.fillStyle='#fff';g.font='bold 14px sans-serif';g.fillText('🌊 강',RX0+20,22);g.font='11px sans-serif';g.fillText('빠지면 표류',RX0+10,40);
+  Z.forEach(z=>{g.font='26px sans-serif';g.fillText(z.e,z.x-13,z.y+9);g.font='bold 11px sans-serif';g.fillStyle='#3d2552';g.fillText(z.n,z.x-18,z.y+z.r-6)});
+  items.forEach(it=>{g.font='24px sans-serif';g.fillText(it.e,it.x-12,it.y+8)});
+  if(swim){g.strokeStyle='#fffb';g.lineWidth=2;for(let i=0;i<2;i++){g.beginPath();g.arc(dog.x,dog.y+8,22+((clock*20+i*7)%14),0,7);g.stroke()}}
   g.setLineDash([6,6]);g.strokeStyle='#3b7d2a';g.lineWidth=2;g.beginPath();g.arc(SX,SY,L,0,7);g.stroke();g.setLineDash([]);
   poops.forEach(p=>{g.font='22px sans-serif';g.fillText('💩',p.x-11,p.y+8)});
   const t=tg(s);g.font='34px sans-serif';g.fillText(ST[s].k==='bowl'?'🥣':'🏠',t.x-17,t.y+12);
@@ -125,7 +153,7 @@ function draw(){
   if(ph==='eat'){g.font='24px sans-serif';for(let i=0;i<3;i++)g.fillText('💗',dog.x-20+i*18,dog.y-30-((clock*30+i*9)%20))}
 }
 function hud(){
-  $('st').textContent=(s+1)+'/4 '+(ST[s].k==='bowl'?'🥣 밥':'🏠 잠자리');
+  $('st').textContent='단계 '+(s+1)+' '+(ST[s].k==='bowl'?'🥣 밥':'🏠 잠자리');
   const e=$('tm');e.textContent=Math.ceil(tm);e.style.color=tm<15?'#e33':'';
   $('ll').textContent=Math.round(L);$('nd').textContent=ST[s].d-20;
   $('hb').style.width=Math.max(0,happy)+'%';
@@ -139,6 +167,6 @@ addEventListener('pointerup',()=>ptr=null);
 addEventListener('keydown',e=>{keys[e.key]=1;if(e.key.startsWith('Arrow'))e.preventDefault();if(e.key===' ')openMini()});
 addEventListener('keyup',e=>keys[e.key]=0);
 $('bt').onclick=openMini;
-panel('🐶 말뚝 강아지','강아지는 말뚝에 매여 하루 종일 같은 자리를 맴돌았어요.\n저기 밥그릇과 집이 보이는데… 줄이 조금 모자라요.\n\n방향키(또는 화면 터치)로 강아지를 움직이고,\n🧶 목줄 늘리기로 새 줄을 이어 주세요.\n시간 안에 밥을 먹이고, 집에서 재워 주세요.','시작하기',start);
+panel('🐶 말뚝 강아지','강아지는 말뚝에 매여 하루 종일 같은 자리를 맴돌았어요.\n저기 밥그릇과 집이 보이는데… 줄이 조금 모자라요.\n\n방향키(또는 화면 터치)로 강아지를 움직이고,\n🧶 목줄 늘리기로 새 줄을 이어 주세요.\n시간 안에 밥을 먹이고, 집에서 재워 주세요.\n🦴🎾은 좋아하고, 💩·보라색 싫어하는 구역은 행복도가 깎여요.\n🌊 강에 빠지면 조종 불가! 떠내려가며 행복도가 줄어요.','시작하기',start);
 requestAnimationFrame(loop);
 </script></body></html>
